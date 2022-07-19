@@ -13,6 +13,9 @@ const State = {
   Halted: 3,
 }
 
+const toWei = (etherValue) => ethers.utils.parseEther(etherValue).toString()
+const toEther = (weiValue) => ethers.utils.formatEther(weiValue).toString()
+
 describe('ICO', () => {
   // We define a fixture to reuse the same setup in every test.
   // We use loadFixture to run this setup once, snapshot that state,
@@ -96,6 +99,34 @@ describe('ICO', () => {
       await time.increaseTo(unlockTime)
 
       expect(await cryptosICO.getCurrentState()).to.equal(State.AfterEnd)
+    })
+  })
+
+  describe('Investing in ICO', () => {
+    it('Should NOT revert if the ICO in running State', async function () {
+      const { otherAccount, cryptosICO } = await loadFixture(deployICOFixture)
+
+      const currentState = await cryptosICO.getCurrentState()
+
+      if (currentState == State.Running) {
+        await expect(
+          cryptosICO.connect(otherAccount).invest({ value: toWei('1') }),
+        ).to.not.reverted
+      } else {
+        this.skip()
+      }
+    })
+
+    it("Should emit event 'Invest'", async () => {
+      const { otherAccount, cryptosICO } = await loadFixture(deployICOFixture)
+      const ETH_VALUE = '1'
+      const expectedTokenCount = '1000'
+
+      await expect(
+        cryptosICO.connect(otherAccount).invest({ value: toWei(ETH_VALUE) }),
+      )
+        .to.emit(cryptosICO, 'Invest')
+        .withArgs(otherAccount.address, toWei(ETH_VALUE), expectedTokenCount)
     })
   })
 
