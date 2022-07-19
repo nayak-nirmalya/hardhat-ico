@@ -52,6 +52,7 @@ contract CryptosICO is Cryptos {
     }
 
     function resume() public onlyAdmin {
+        require(getCurrentState() != State.Running, "ICO Already Running!");
         icoState = State.Running;
     }
 

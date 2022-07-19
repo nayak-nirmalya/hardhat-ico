@@ -4,6 +4,7 @@ const {
 } = require('@nomicfoundation/hardhat-network-helpers')
 const { anyValue } = require('@nomicfoundation/hardhat-chai-matchers/withArgs')
 const { expect } = require('chai')
+const { ethers } = require('hardhat')
 
 const State = {
   BeforeStart: 0,
@@ -17,7 +18,8 @@ describe('ICO', () => {
   // We use loadFixture to run this setup once, snapshot that state,
   // and reset Hardhat Network to that snapshopt in every test.
   async function deployICOFixture() {
-    const CURRENT_TIME = await time.latest()
+    const ONE_WEEK_IN_SECONDS = 7 * 24 * 60 * 60
+    const unlockTime = (await time.latest()) + ONE_WEEK_IN_SECONDS + 60
 
     // Contracts are deployed using the first signer/account by default
     const [
@@ -38,6 +40,7 @@ describe('ICO', () => {
       depositAccout,
       anotherDepositAccount,
       cryptosICO,
+      unlockTime,
     }
   }
 
@@ -55,6 +58,44 @@ describe('ICO', () => {
     it('Should set the state to "Running"', async function () {
       const { cryptosICO } = await loadFixture(deployICOFixture)
       expect(await cryptosICO.getCurrentState()).to.equal(State.Running)
+    })
+  })
+
+  describe('Changing States of ICO', () => {
+    it('Should NOT let anyone except admit to halt the ICO', async () => {
+      const { anotherAccount, cryptosICO } = await loadFixture(deployICOFixture)
+      await expect(cryptosICO.connect(anotherAccount).halt()).to.revertedWith(
+        'Not Admin!',
+      )
+    })
+
+    it('Should halt the ICO and change state', async () => {
+      const { cryptosICO } = await loadFixture(deployICOFixture)
+
+      await cryptosICO.halt()
+
+      expect(await cryptosICO.getCurrentState()).to.equal(State.Halted)
+    })
+
+    it('Should NOT let anyone except admit to resume the ICO', async () => {
+      const { anotherAccount, cryptosICO } = await loadFixture(deployICOFixture)
+      await expect(cryptosICO.connect(anotherAccount).resume()).to.revertedWith(
+        'Not Admin!',
+      )
+    })
+
+    it('Should revert if ICO already Running', async () => {
+      const { cryptosICO } = await loadFixture(deployICOFixture)
+      await expect(cryptosICO.resume()).to.revertedWith('ICO Already Running!')
+    })
+
+    it('Should change the state to AfterEnd after sales end', async () => {
+      const { unlockTime, cryptosICO } = await loadFixture(deployICOFixture)
+
+      // We can increase the time in Hardhat Network
+      await time.increaseTo(unlockTime)
+
+      expect(await cryptosICO.getCurrentState()).to.equal(State.AfterEnd)
     })
   })
 
