@@ -44,29 +44,17 @@ describe('ICO', () => {
   describe('Deployment', function () {
     it('Should set the right deposit account', async () => {
       const { cryptosICO, depositAccout } = await loadFixture(deployICOFixture)
-
       expect(await cryptosICO.deposit()).to.equal(depositAccout.address)
     })
 
     it('Should set the right admin', async function () {
       const { admin, cryptosICO } = await loadFixture(deployICOFixture)
-
       expect(await cryptosICO.admin()).to.equal(admin.address)
     })
 
     it('Should set the state to "Running"', async function () {
       const { cryptosICO } = await loadFixture(deployICOFixture)
-
       expect(await cryptosICO.getCurrentState()).to.equal(State.Running)
-    })
-
-    xit('Should fail if the unlockTime is not in the future', async function () {
-      // We don't use the fixture here because we want a different deployment
-      const latestTime = await time.latest()
-      const Lock = await ethers.getContractFactory('Lock')
-      await expect(Lock.deploy(latestTime, { value: 1 })).to.be.revertedWith(
-        'Unlock time should be in the future',
-      )
     })
   })
 

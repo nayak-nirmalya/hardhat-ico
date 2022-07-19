@@ -34,7 +34,7 @@ contract CryptosICO is Cryptos {
         deposit = _deposit;
         admin = msg.sender;
         icoState = State.BeforeStart;
-        console.log("Current State: %s", 1);
+        console.log("Admin Address: %s", admin);
     }
 
     modifier onlyAdmin() {
