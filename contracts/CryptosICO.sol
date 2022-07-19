@@ -10,12 +10,12 @@ contract CryptosICO is Cryptos {
     address public admin;
     address payable public deposit;
     uint public tokenPrice = 0.001 ether;
-    uint public hardCap = 300 ether;
+    uint public hardCap = 50 ether;
     uint public raisedAmount;
     uint public saleStart = block.timestamp;
     uint public saleEnd = block.timestamp + 604800; // ICO ends in one week
     uint public tokenTradeStart = saleEnd + 604800; // can only transfer after one week of sale end
-    uint public maxInvestment = 5 ether;
+    uint public maxInvestment = 15 ether;
     uint public minInvestment = 0.1 ether;
 
     enum State {

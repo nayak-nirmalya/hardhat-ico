@@ -2,7 +2,6 @@ const {
   time,
   loadFixture,
 } = require('@nomicfoundation/hardhat-network-helpers')
-const { anyValue } = require('@nomicfoundation/hardhat-chai-matchers/withArgs')
 const { expect } = require('chai')
 const { ethers } = require('hardhat')
 
@@ -12,6 +11,8 @@ const State = {
   AfterEnd: 2,
   Halted: 3,
 }
+
+const TOKEN_PRICE = 0.001
 
 const toWei = (etherValue) => ethers.utils.parseEther(etherValue).toString()
 const toEther = (weiValue) => ethers.utils.formatEther(weiValue).toString()
@@ -119,8 +120,8 @@ describe('ICO', () => {
 
     it("Should emit event 'Invest'", async () => {
       const { otherAccount, cryptosICO } = await loadFixture(deployICOFixture)
-      const ETH_VALUE = '1'
-      const expectedTokenCount = '1000'
+      const ETH_VALUE = '15'
+      const expectedTokenCount = ETH_VALUE / TOKEN_PRICE
 
       await expect(
         cryptosICO.connect(otherAccount).invest({ value: toWei(ETH_VALUE) }),
@@ -128,69 +129,60 @@ describe('ICO', () => {
         .to.emit(cryptosICO, 'Invest')
         .withArgs(otherAccount.address, toWei(ETH_VALUE), expectedTokenCount)
     })
+
+    it('can NOT invest if ETH amount is low', async () => {
+      const { otherAccount, cryptosICO } = await loadFixture(deployICOFixture)
+      const ETH_VALUE = '0.0001'
+
+      await expect(
+        cryptosICO.connect(otherAccount).invest({ value: toWei(ETH_VALUE) }),
+      ).to.revertedWith('Investment Value is not in acceptable range!')
+    })
+
+    it('can NOT invest if ETH amount is higher than maximum amount', async () => {
+      const { otherAccount, cryptosICO } = await loadFixture(deployICOFixture)
+      const ETH_VALUE = '18'
+
+      await expect(
+        cryptosICO.connect(otherAccount).invest({ value: toWei(ETH_VALUE) }),
+      ).to.revertedWith('Investment Value is not in acceptable range!')
+    })
+
+    it('can NOT invest if invest amount will reach hardcap', async () => {
+      const {
+        admin,
+        otherAccount,
+        anotherAccount,
+        cryptosICO,
+      } = await loadFixture(deployICOFixture)
+      const ETH_VALUE = '15'
+
+      await cryptosICO.connect(admin).invest({ value: toWei(ETH_VALUE) })
+      await cryptosICO.connect(otherAccount).invest({ value: toWei(ETH_VALUE) })
+      await cryptosICO
+        .connect(anotherAccount)
+        .invest({ value: toWei(ETH_VALUE) })
+
+      await expect(
+        cryptosICO.connect(otherAccount).invest({ value: toWei(ETH_VALUE) }),
+      ).to.revertedWith('Hardcap Reached!')
+    })
   })
 
-  // describe('Withdrawals', function () {
-  //   describe('Validations', function () {
-  //     it('Should revert with the right error if called too soon', async function () {
-  //       const { lock } = await loadFixture(deployOneYearLockFixture)
+  describe('Burning Token', () => {
+    it('Should burn remaining tokens after ICO ends', async function () {
+      const { admin, unlockTime, cryptosICO } = await loadFixture(
+        deployICOFixture,
+      )
 
-  //       await expect(lock.withdraw()).to.be.revertedWith(
-  //         "You can't withdraw yet",
-  //       )
-  //     })
+      await time.increaseTo(unlockTime)
+      const burned = await cryptosICO.burn()
 
-  //     it('Should revert with the right error if called from another account', async function () {
-  //       const { lock, unlockTime, otherAccount } = await loadFixture(
-  //         deployOneYearLockFixture,
-  //       )
-
-  //       // We can increase the time in Hardhat Network
-  //       await time.increaseTo(unlockTime)
-
-  //       // We use lock.connect() to send a transaction from another account
-  //       await expect(lock.connect(otherAccount).withdraw()).to.be.revertedWith(
-  //         "You aren't the owner",
-  //       )
-  //     })
-
-  //     it("Shouldn't fail if the unlockTime has arrived and the owner calls it", async function () {
-  //       const { lock, unlockTime } = await loadFixture(deployOneYearLockFixture)
-
-  //       // Transactions are sent using the first signer by default
-  //       await time.increaseTo(unlockTime)
-
-  //       await expect(lock.withdraw()).not.to.be.reverted
-  //     })
-  //   })
-
-  //   describe('Events', function () {
-  //     it('Should emit an event on withdrawals', async function () {
-  //       const { lock, unlockTime, lockedAmount } = await loadFixture(
-  //         deployOneYearLockFixture,
-  //       )
-
-  //       await time.increaseTo(unlockTime)
-
-  //       await expect(lock.withdraw())
-  //         .to.emit(lock, 'Withdrawal')
-  //         .withArgs(lockedAmount, anyValue) // We accept any value as `when` arg
-  //     })
-  //   })
-
-  //   describe('Transfers', function () {
-  //     it('Should transfer the funds to the owner', async function () {
-  //       const { lock, unlockTime, lockedAmount, owner } = await loadFixture(
-  //         deployOneYearLockFixture,
-  //       )
-
-  //       await time.increaseTo(unlockTime)
-
-  //       await expect(lock.withdraw()).to.changeEtherBalances(
-  //         [owner, lock],
-  //         [lockedAmount, -lockedAmount],
-  //       )
-  //     })
-  //   })
-  // })
+      if (burned) {
+        expect(await cryptosICO.balances(admin.address)).to.equal('0')
+      } else {
+        this.skip()
+      }
+    })
+  })
 })
