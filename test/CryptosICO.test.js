@@ -169,6 +169,32 @@ describe('ICO', () => {
     })
   })
 
+  describe('Change Deposite Address', () => {
+    it('Should change deposite address', async () => {
+      const { anotherDepositAccount, cryptosICO } = await loadFixture(
+        deployICOFixture,
+      )
+
+      await cryptosICO.changeDepositAddress(anotherDepositAccount.address)
+
+      expect(await cryptosICO.deposit()).to.equal(anotherDepositAccount.address)
+    })
+
+    it('Only admin can change the deposit address', async () => {
+      const {
+        otherAccount,
+        anotherDepositAccount,
+        cryptosICO,
+      } = await loadFixture(deployICOFixture)
+
+      await expect(
+        cryptosICO
+          .connect(otherAccount)
+          .changeDepositAddress(anotherDepositAccount.address),
+      ).to.revertedWith('Not Admin!')
+    })
+  })
+
   describe('Burning Token', () => {
     it('Should burn remaining tokens after ICO ends', async function () {
       const { admin, unlockTime, cryptosICO } = await loadFixture(
