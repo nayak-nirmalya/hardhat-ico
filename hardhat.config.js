@@ -11,4 +11,12 @@ task('balance', "Prints an account's balance")
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
   solidity: '0.8.9',
+  networks: {
+    ganache: {
+      url: 'http://127.0.0.1:7545',
+      accounts: {
+        mnemonic: 'ENTER_YOUR_MNEMONIC!',
+      },
+    },
+  },
 }
